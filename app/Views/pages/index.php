@@ -2613,7 +2613,7 @@
 
     <!-- JS here -->
 
-    <script src="<?=base_url()?>assets/js/vendor/jquery.js"></script>
+    <script src="<?=base_url()?>assets/js/vendor-assets/jquery.js"></script>
     <script src="<?=base_url()?>assets/js/bootstrap-bundle.js"></script>
     <script src="<?=base_url()?>assets/js/swiper-bundle.js"></script>
     <script src="<?=base_url()?>assets/js/plugin.js"></script>

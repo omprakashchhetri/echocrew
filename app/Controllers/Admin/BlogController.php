@@ -23,7 +23,7 @@ class BlogController extends BaseController
     {
         $data['posts'] = $this->blogModel
             ->withCategory()
-            ->orderBy('created_at', 'DESC')
+            ->orderBy('posts.created_at', 'DESC')
             ->findAll();
 
         return view('admin/blog/index', $data);

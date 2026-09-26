@@ -6,6 +6,12 @@ use CodeIgniter\Router\RouteCollection;
  * @var RouteCollection $routes
  */
 $routes->get('/', 'Home::index');
+$routes->post('enquiry', 'Enquiry::store');
+
+// SEO
+$routes->get('services', 'Services::index');
+$routes->get('services/(:segment)', 'Services::show/$1');
+$routes->get('sitemap.xml', 'Sitemap::index');
 
 auth()->routes($routes);
 

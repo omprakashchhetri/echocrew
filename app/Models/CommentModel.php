@@ -14,6 +14,7 @@ class CommentModel extends Model
         return $this->where('post_id', $post_id)
                     ->join('users', 'users.id = comments.user_id')
                     ->select('comments.*, users.username')
+                    ->orderBy('comments.id', 'ASC')
                     ->findAll();
     }
 }

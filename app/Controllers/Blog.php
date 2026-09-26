@@ -21,10 +21,13 @@ class Blog extends BaseController
         $data['posts'] = $this->blogModel
             ->withCategory()
             ->where('posts.status', 'published')
-            ->orderBy('created_at', 'DESC')
-            ->paginate(5);
+            ->orderBy('posts.created_at', 'DESC')
+            ->paginate(10);
 
-        $data['pager'] = $this->blogModel->pager;
+        $data['pager']       = $this->blogModel->pager;
+        $data['title']       = 'Blog | EchoCrew';
+        $data['description'] = 'Writing from the EchoCrew team on custom software, CRM, automation, integrations and running digital systems for growing businesses.';
+        $data['canonical']   = base_url('blog');
 
         return view('blog/index', $data);
     }
@@ -33,7 +36,8 @@ class Blog extends BaseController
     {
         $post = $this->blogModel->getBySlug($slug);
 
-        if (!$post) {
+        // Drafts are not public.
+        if (! $post || ($post['status'] ?? '') !== 'published') {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
@@ -46,27 +50,44 @@ class Blog extends BaseController
             cache()->save($cacheKey, true, 600);
         }
 
-        $data['post'] = $post;
-        $data['comments'] = $this->commentModel->getComments($post['id']);
+        $excerpt = trim(preg_replace('/\s+/', ' ', strip_tags((string) $post['content'])));
+
+        $data['post']        = $post;
+        $data['comments']    = $this->commentModel->getComments($post['id']);
+        $data['title']       = $post['title'] . ' | EchoCrew';
+        $data['description'] = mb_strimwidth($excerpt, 0, 158, '...');
+        $data['canonical']   = base_url('blog/view/' . $post['slug']);
+        $data['ogType']      = 'article';
+        $data['breadcrumbs'] = [
+            'Home'         => base_url(),
+            'Blog'         => base_url('blog'),
+            $post['title'] => base_url('blog/view/' . $post['slug']),
+        ];
 
         return view('blog/view', $data);
     }
 
     public function comment($id)
-{
-    // ❗ Block guests from posting
-    if (!auth()->loggedIn()) {
-        return redirect()->back()->with('error', 'Please log in to comment');
+    {
+        if (! auth()->loggedIn()) {
+            return redirect()->back()->with('error', 'Please log in to comment');
+        }
+
+        if (! $this->blogModel->where('status', 'published')->find($id)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $comment = trim((string) $this->request->getPost('comment'));
+        if ($comment === '' || mb_strlen($comment) > 2000) {
+            return redirect()->back()->with('error', 'Comments need to be between 1 and 2000 characters.');
+        }
+
+        $this->commentModel->save([
+            'post_id' => $id,
+            'user_id' => user_id(),
+            'comment' => $comment,
+        ]);
+
+        return redirect()->back()->with('message', 'Comment added');
     }
-
-    $data = [
-        'post_id' => $id,
-        'user_id' => user_id(), // ✅ Shield helper to get user ID
-        'comment' => $this->request->getPost('comment'),
-    ];
-
-    $this->commentModel->save($data);
-    return redirect()->back()->with('message', 'Comment added');
-}
-
 }

@@ -12,17 +12,18 @@ class BlogModel extends Model
     ];
     protected $useTimestamps = true;
 
+    // The model already selects FROM posts; adding from('posts p') here would
+    // cross-join the table with itself and repeat every row.
     public function withCategory()
     {
-        return $this->select('p.*, c.name as category_name')
-                    ->from('posts p')
-                    ->join('categories c', 'c.id = p.category_id', 'left');
+        return $this->select('posts.*, c.name as category_name')
+                    ->join('categories c', 'c.id = posts.category_id', 'left');
     }
 
     public function getBySlug($slug)
     {
         return $this->withCategory()
-                    ->where('p.slug', $slug)
+                    ->where('posts.slug', $slug)
                     ->first();
     }
 

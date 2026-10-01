@@ -2,19 +2,21 @@
 
 ## How it works
 
-- Public list: `/blog` (published posts, 10 per page, newest first).
+- Public list: `/blog` (published posts, 10 per page, newest first), plus `/blog/category/{slug}` and `/blog/tag/{slug}`.
 - Public post: `/blog/view/{slug}`. Drafts and archived posts return 404.
+- RSS: `/blog/feed.xml`. Published posts are in `sitemap.xml`; drafts are not.
 - Views increment once per IP per 10 minutes (cache-based).
-- Comments need a logged-in user and are shown under the post.
-- Posts appear in `sitemap.xml` and get Article metadata, canonical URL and breadcrumbs.
+- Comments need a logged-in user. Admins can hide or delete them at `/admin/comments`; hidden comments are not shown publicly.
 
 ## Admin workflow
 
-1. Log in at `/login`.
-2. Open `/admin/blog` and choose **Create**.
-3. Enter title, body (HTML via the editor), category and status.
-4. Keep status `draft` until reviewed; switch to `published` to go live.
-5. Slug is generated from the title (`url_title`). Editing the title changes the slug and therefore the URL, so avoid retitling published posts.
+1. Log in at `/login` with a staff account (see README, "Admin and roles").
+2. **Posts** (`/admin/blog`): search by title, filter by status or category, publish/unpublish in one click, edit or delete.
+3. **New post**: title, optional slug and excerpt, body, category, tags (tick existing or type new ones), status.
+4. Keep status `draft` until reviewed; `published` sets the publish date the first time.
+5. **Slugs** are generated from the title once. Editing the title later does not change the URL; change the slug field deliberately if you must.
+6. **Categories** and **Tags** have their own pages. A category with posts cannot be deleted.
+7. Bodies are sanitised on save: headings, paragraphs, lists, links, images, quotes, code and tables only.
 
 Seed starter categories and draft posts:
 
@@ -22,7 +24,7 @@ Seed starter categories and draft posts:
 php spark db:seed BlogSeeder
 ```
 
-The seeder is idempotent for categories and skips posts whose slug already exists. It needs at least one user (create one with `php spark shield:user create`) and publishes nothing: all seeded posts are `draft`.
+The seeder is idempotent for categories and skips posts whose slug already exists. It needs at least one user and publishes nothing: all seeded posts are `draft`.
 
 ## Authoring guidelines
 
@@ -48,9 +50,7 @@ The seeder creates these as drafts with an outline for each, ready to be written
 
 ## Roadmap
 
-1. Lock admin to an `admin` group and make delete a POST (see the security checklist in DEVELOPER.md).
-2. Category pages (`/blog/category/{slug}`) and tag UI using the existing `tags` and `post_tags` tables.
-3. Excerpt and cover image fields on `posts`.
-4. RSS feed (`/blog/feed.xml`).
-5. Comment moderation and spam protection.
-6. Replace CKEditor 4 with a maintained editor.
+1. Image upload and a cover image field.
+2. Scheduled publishing and post revisions.
+3. Comment replies and spam protection.
+4. Feature tests for the admin controllers.

@@ -96,6 +96,7 @@ class BlogSeeder extends Seeder
                 'title'       => $post['title'],
                 'slug'        => $slug,
                 'content'     => $body,
+                'excerpt'     => null,
                 'status'      => 'draft',
                 'view_count'  => 0,
                 'user_id'     => $user['id'],

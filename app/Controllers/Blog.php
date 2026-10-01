@@ -18,18 +18,73 @@ class Blog extends BaseController
 
     public function index()
     {
-        $data['posts'] = $this->blogModel
-            ->withCategory()
-            ->where('posts.status', 'published')
-            ->orderBy('posts.created_at', 'DESC')
-            ->paginate(10);
+        return $this->listing(null, null, 'Blog | EchoCrew', base_url('blog'));
+    }
+
+    public function category($slug)
+    {
+        $cat = (new \App\Models\CategoryModel())->where('slug', $slug)->first()
+            ?? throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+
+        return $this->listing($slug, null, $cat['name'] . ' | Blog | EchoCrew', base_url('blog/category/' . $slug), $cat['name']);
+    }
+
+    public function tag($slug)
+    {
+        $tag = (new \App\Models\TagModel())->where('slug', $slug)->first()
+            ?? throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+
+        return $this->listing(null, $slug, '#' . $tag['name'] . ' | Blog | EchoCrew', base_url('blog/tag/' . $slug), '#' . $tag['name']);
+    }
+
+    public function feed()
+    {
+        $posts = $this->blogModel->published()->findAll(20);
+
+        $items = '';
+        foreach ($posts as $p) {
+            $url    = base_url('blog/view/' . $p['slug']);
+            $when   = date(DATE_RSS, strtotime((string) ($p['published_at'] ?: $p['created_at'])));
+            $items .= '<item><title>' . htmlspecialchars($p['title'], ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</title><link>' . $url . '</link><guid>' . $url . '</guid>'
+                . '<pubDate>' . $when . '</pubDate><description>' . htmlspecialchars($this->excerptOf($p), ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</description></item>';
+        }
+
+        $xml = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>EchoCrew Blog</title>'
+            . '<link>' . base_url('blog') . '</link><description>Writing from the EchoCrew team.</description>'
+            . $items . '</channel></rss>';
+
+        return $this->response->setContentType('application/rss+xml')->setBody($xml);
+    }
+
+    private function listing(?string $categorySlug, ?string $tagSlug, string $title, string $canonical, ?string $heading = null)
+    {
+        $data['posts'] = $this->blogModel->published($categorySlug, $tagSlug)->paginate(10);
+
+        foreach ($data['posts'] as &$post) {
+            $post['summary'] = $this->excerptOf($post);
+        }
+        unset($post);
 
         $data['pager']       = $this->blogModel->pager;
-        $data['title']       = 'Blog | EchoCrew';
+        $data['heading']     = $heading;
+        $data['categories']  = (new \App\Models\CategoryModel())->orderBy('name')->findAll();
+        $data['title']       = $title;
         $data['description'] = 'Writing from the EchoCrew team on custom software, CRM, automation, integrations and running digital systems for growing businesses.';
-        $data['canonical']   = base_url('blog');
+        $data['canonical']   = $canonical;
 
         return view('blog/index', $data);
+    }
+
+    /** Manual excerpt if set, otherwise the first ~160 characters of the body. */
+    private function excerptOf(array $post): string
+    {
+        if (! empty($post['excerpt'])) {
+            return $post['excerpt'];
+        }
+
+        $text = trim(preg_replace('/\s+/', ' ', strip_tags((string) $post['content'])));
+
+        return mb_strimwidth($text, 0, 158, '...');
     }
 
     public function view($slug)
@@ -50,12 +105,11 @@ class Blog extends BaseController
             cache()->save($cacheKey, true, 600);
         }
 
-        $excerpt = trim(preg_replace('/\s+/', ' ', strip_tags((string) $post['content'])));
-
         $data['post']        = $post;
+        $data['tags']        = $this->blogModel->tagsFor((int) $post['id']);
         $data['comments']    = $this->commentModel->getComments($post['id']);
         $data['title']       = $post['title'] . ' | EchoCrew';
-        $data['description'] = mb_strimwidth($excerpt, 0, 158, '...');
+        $data['description'] = $this->excerptOf($post);
         $data['canonical']   = base_url('blog/view/' . $post['slug']);
         $data['ogType']      = 'article';
         $data['breadcrumbs'] = [

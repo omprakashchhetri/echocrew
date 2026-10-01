@@ -7,7 +7,8 @@ Marketing website, enquiry intake and blog for [EchoCrew](https://echocrew.in), 
 - Home page and service pages (content driven by `app/Config/Seo.php`)
 - Enquiry form with honeypot, validation and DB storage
 - Blog with categories, drafts/published/archived states, view counting and logged-in comments
-- Admin blog editor under `/admin/blog`
+- Staff admin at `/admin`: dashboard, posts (search, filter, publish/unpublish), categories, tags, comment moderation, enquiry inbox and user/role management
+- Public blog extras: category and tag pages, excerpts, RSS at `/blog/feed.xml`
 - `sitemap.xml`, canonical URLs, breadcrumbs and JSON-LD schema partials
 
 ## Requirements
@@ -20,9 +21,9 @@ Marketing website, enquiry intake and blog for [EchoCrew](https://echocrew.in), 
 
 ```bash
 composer install
-cp env .env            # then edit baseURL, database.* and CI_ENVIRONMENT
+cp env.example .env    # then edit baseURL, database.* and CI_ENVIRONMENT
 php spark migrate --all   # --all includes the Shield tables
-php spark shield:user create   # create your first admin login
+php spark shield:user create -n yourname -e you@example.com -g superadmin
 php spark serve        # http://localhost:8080
 ```
 
@@ -56,10 +57,17 @@ php spark routes
 composer test             # or vendor/bin/phpunit
 ```
 
-## Security notes
+## Admin and roles
 
-- Any authenticated user can currently reach `/admin/*` (the `session` filter only checks login). Before opening registration to the public, restrict admin routes to a group, or disable registration. See [docs/DEVELOPER.md](docs/DEVELOPER.md#security-checklist).
-- Blog post bodies are rendered as raw HTML. Only trusted staff should be able to publish.
+Public registration is disabled. Staff accounts are created by a super admin at `/admin/users`, or from the CLI with `php spark shield:user create ... -g <group>`.
+
+| Group | Can do |
+| --- | --- |
+| `superadmin` | Everything, including creating/editing/deleting admin-level accounts |
+| `admin`, `developer` | Use `/admin` (posts, comments, enquiries, users in non-privileged groups) |
+| `user`, `beta` | No admin access; may comment on posts |
+
+Security measures: admin routes require the `admin.access` permission, CSRF is enabled globally, every state change is a POST, post bodies are sanitised with an allow-list on save, and only whitelisted fields are saved. Details in [docs/DEVELOPER.md](docs/DEVELOPER.md#security).
 
 ## License
 

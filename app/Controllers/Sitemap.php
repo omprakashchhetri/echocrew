@@ -21,7 +21,7 @@ class Sitemap extends BaseController
 
         // Blog posts, if the table exists.
         try {
-            $posts = (new BlogModel())->select('slug, updated_at')->findAll();
+            $posts = (new BlogModel())->select('slug, updated_at')->where('status', 'published')->findAll();
             foreach ($posts as $post) {
                 $urls[] = [
                     'loc'        => base_url('blog/view/' . $post['slug']),

@@ -157,7 +157,7 @@ class Auth extends ShieldAuth
      * --------------------------------------------------------------------
      * Determines whether users can register for the site.
      */
-    public bool $allowRegistration = true;
+    public bool $allowRegistration = false;
 
     /**
      * --------------------------------------------------------------------
@@ -442,9 +442,14 @@ class Auth extends ShieldAuth
     public function loginRedirect(): string
     {
         $session = session();
-        $url     = $session->getTempdata('beforeLoginUrl') ?? setting('Auth.redirects')['login'];
+        $url     = $session->getTempdata('beforeLoginUrl');
 
-        return $this->getUrl($url);
+        // Staff land on the dashboard; everyone else on the configured page.
+        if ($url === null && auth()->user()?->can('admin.access')) {
+            $url = 'admin';
+        }
+
+        return $this->getUrl($url ?? setting('Auth.redirects')['login']);
     }
 
     /**

@@ -10,7 +10,7 @@
 ## Setup
 
 1. `composer install`
-2. `cp env .env` and set at least:
+2. `cp env.example .env` and set at least:
    ```ini
    CI_ENVIRONMENT = development
    app.baseURL = 'http://localhost:8080/'
@@ -21,7 +21,7 @@
    database.default.DBDriver = MySQLi
    ```
 3. `php spark migrate --all`
-4. `php spark shield:user create` for an admin login
+4. `php spark shield:user create -n yourname -e you@example.com -g superadmin`
 5. `php spark serve`
 
 `.env` is git-ignored. Never commit credentials.
@@ -33,11 +33,18 @@
 | `GET /` | `Home::index` | Passes title, description, FAQ schema |
 | `GET /services`, `/services/{slug}` | `Services` | Slugs are keys of `Seo::$services`; unknown slug = 404 |
 | `POST /enquiry` | `Enquiry::store` | Honeypot field `ec_website`, validated, saved to `enquiries` |
-| `GET /sitemap.xml` | `Sitemap::index` | Static pages + services + all blog posts |
+| `GET /sitemap.xml` | `Sitemap::index` | Static pages, services, published posts only |
 | `GET /blog`, `/blog/view/{slug}` | `Blog` | Published posts only |
-| `POST /blog/comment/{id}` | `Blog::comment` | Login required, 1-2000 chars |
-| `/admin/blog/*` | `Admin\BlogController` | Behind `session` filter |
-| Shield routes | `auth()->routes()` | `/login`, `/register`, `/logout` etc. |
+| `GET /blog/category/{slug}`, `/blog/tag/{slug}` | `Blog` | Filtered lists |
+| `GET /blog/feed.xml` | `Blog::feed` | RSS, latest 20 |
+| `POST /blog/comment/{id}` | `Blog::comment` | Login required, 1-2000 chars; hidden comments are not shown |
+| `/admin` | `Admin\Dashboard` | Needs permission `admin.access` |
+| `/admin/blog/*` | `Admin\BlogController` | List/filter, create, edit, status, delete |
+| `/admin/categories`, `/admin/tags` | `CategoryController`, `TagController` | Categories in use cannot be deleted |
+| `/admin/comments` | `Admin\CommentController` | Hide/show/delete |
+| `/admin/enquiries` | `Admin\EnquiryController` | Inbox with new/contacted/closed status |
+| `/admin/users/*` | `Admin\UserController` | Needs `users.edit`; admin-level accounts need `users.manage-admins` |
+| Shield routes | `auth()->routes()` | `/login`, `/logout` etc. Registration is disabled |
 
 Run `php spark routes` for the live table.
 
@@ -51,10 +58,10 @@ Migrations live in `app/Database/Migrations/`.
 
 | Table | Purpose |
 | --- | --- |
-| `posts` | title, unique slug, content (HTML), status enum, view_count, user_id, category_id |
-| `categories`, `tags`, `post_tags` | Taxonomy (tags are modelled but not wired into the UI yet) |
-| `comments` | post_id, user_id, comment |
-| `enquiries` | Contact form submissions |
+| `posts` | title, unique slug, excerpt, content (sanitised HTML), status, published_at, view_count, user_id, category_id |
+| `categories`, `tags`, `post_tags` | Taxonomy (managed in admin, shown on posts, filterable publicly) |
+| `comments` | post_id, user_id, comment, status (`approved`/`hidden`) |
+| `enquiries` | Contact form submissions with status (`new`/`contacted`/`closed`) |
 | Shield tables | `users`, `auth_identities`, `auth_groups_users`, etc. |
 
 Rollback: `php spark migrate:rollback`. Seed: `php spark db:seed BlogSeeder`.
@@ -85,18 +92,26 @@ Tests live in `tests/` (`unit`, `database`, `session`, `_support`). Add a featur
 5. Web root is `public/`. The root `.htaccess` rewrites to `public/` as a fallback for shared hosting, but a vhost pointing at `public/` is preferred.
 6. Submit `/sitemap.xml` to Search Console after publishing new posts.
 
-## Security checklist
+## Security
 
-- [ ] Restrict `/admin/*` to an `admin` group (e.g. `['filter' => 'group:admin']`) or set `Auth::$allowRegistration = false`. Today any logged-in user can edit posts.
-- [ ] Use POST + CSRF for deletes. `admin/blog/delete/{id}` is currently a GET route.
-- [ ] Sanitise or restrict HTML in post content, since it is rendered unescaped.
-- [ ] Whitelist fields in `BlogController::store/update` instead of passing the full POST array to `save()`.
-- [ ] Keep CSRF enabled for forms (`csrf_field()` is used in admin views).
-- [ ] Rate-limit `/enquiry` at the web server if spam appears beyond the honeypot.
+Implemented:
+
+- Admin routes use Shield's `permission:admin.access` filter; user management additionally needs `users.edit`.
+- Only `superadmin` (`users.manage-admins`) can create, edit, ban or delete `superadmin`/`admin`/`developer` accounts or assign those roles. Nobody can ban, delete or re-role themselves.
+- Registration is off (`Auth::$allowRegistration = false`); the login redirect sends staff to `/admin`.
+- CSRF is enabled globally. All deletes and status changes are POST. Any new form must include `csrf_field()`.
+- Controllers save a fixed whitelist of fields, never the raw POST array.
+- Post bodies pass through `App\Libraries\HtmlSanitizer` (allow-list of tags and attributes, `javascript:` and similar URLs removed, `<h1>` demoted to `<h2>`) before being stored, and are rendered as stored.
+- The sitemap and feed expose published posts only.
+
+Still recommended: rate-limit `/login` and `/enquiry` at the web server, serve over HTTPS with `secureheaders` enabled, and add a Content-Security-Policy that permits the editor CDN (`cdn.jsdelivr.net`) on admin pages only.
+
+## Admin editor
+
+The post form uses Quill 2 from jsdelivr. If the CDN is unreachable, the form falls back to a plain HTML textarea. The sanitiser is the real safety net, not the editor.
 
 ## Known gaps / TODO
 
-- Tags are not editable or displayed.
-- No category pages or post search.
-- Admin views are unstyled and use CKEditor 4 from a CDN (end-of-life); plan a move to a maintained editor.
-- No tests for blog or enquiry flows yet.
+- No image upload; images are inserted by URL.
+- No post revisions, scheduling or comment replies.
+- Feature tests for the admin controllers (the HTML sanitiser has unit tests in `tests/unit`).

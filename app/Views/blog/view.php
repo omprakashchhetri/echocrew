@@ -12,16 +12,23 @@
       <h1 data-split style="font-size:clamp(2.2rem,4.6vw,3.8rem)"><?= esc($post['title']) ?></h1>
       <div class="ec-article__meta">
         <?php if (! empty($post['category_name'])): ?><span><?= esc($post['category_name']) ?></span><?php endif; ?>
-        <?php if (! empty($post['created_at'])): ?>
-          <time datetime="<?= esc(date('Y-m-d', strtotime((string) $post['created_at'])), 'attr') ?>"><?= esc(date('j F Y', strtotime((string) $post['created_at']))) ?></time>
+        <?php $when = $post['published_at'] ?: $post['created_at']; ?>
+        <?php if (! empty($when)): ?>
+          <time datetime="<?= esc(date('Y-m-d', strtotime((string) $when)), 'attr') ?>"><?= esc(date('j F Y', strtotime((string) $when))) ?></time>
         <?php endif; ?>
       </div>
     </div>
   </header>
 
   <div class="ec-shell ec-article" style="padding-bottom:var(--sec)">
-    <!-- Post content is authored in the admin area and rendered as HTML. -->
+    <!-- Post content is sanitised (App\Libraries\HtmlSanitizer) when saved in the admin area. -->
     <div class="ec-prose"><?= $post['content'] ?></div>
+
+    <?php if (! empty($tags)): ?>
+      <p class="ec-muted">
+        <?php foreach ($tags as $t): ?><a class="ec-link" href="<?= base_url('blog/tag/' . $t['slug']) ?>">#<?= esc($t['name']) ?></a> <?php endforeach; ?>
+      </p>
+    <?php endif; ?>
 
     <section class="ec-comments" aria-labelledby="ec-comments-title">
       <h2 id="ec-comments-title">Comments</h2>

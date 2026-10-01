@@ -1,69 +1,74 @@
-# CodeIgniter 4 Application Starter
+# EchoCrew
 
-## What is CodeIgniter?
+Marketing website, enquiry intake and blog for [EchoCrew](https://echocrew.in), a software studio in Siliguri, West Bengal. Built on **CodeIgniter 4** with **CodeIgniter Shield** for authentication.
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+## Features
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+- Home page and service pages (content driven by `app/Config/Seo.php`)
+- Enquiry form with honeypot, validation and DB storage
+- Blog with categories, drafts/published/archived states, view counting and logged-in comments
+- Staff admin at `/admin`: dashboard, posts (search, filter, publish/unpublish), categories, tags, comment moderation, enquiry inbox and user/role management
+- Public blog extras: category and tag pages, excerpts, RSS at `/blog/feed.xml`
+- `sitemap.xml`, canonical URLs, breadcrumbs and JSON-LD schema partials
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+## Requirements
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+- PHP 8.1+ with `intl`, `mbstring`, `json`, `mysqlnd` (or another supported DB driver)
+- Composer
+- MySQL/MariaDB
 
-## Installation & updates
+## Quick start
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+```bash
+composer install
+cp env.example .env    # then edit baseURL, database.* and CI_ENVIRONMENT
+php spark migrate --all   # --all includes the Shield tables
+php spark shield:user create -n yourname -e you@example.com -g superadmin
+php spark serve        # http://localhost:8080
+```
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+The web root is `public/`. Point your virtual host there, never at the project root.
 
-## Setup
+## Documentation
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+| Doc | Contents |
+| --- | --- |
+| [docs/DEVELOPER.md](docs/DEVELOPER.md) | Architecture, routes, config, database, conventions, testing, deployment |
+| [docs/BLOG.md](docs/BLOG.md) | Blog data model, admin workflow, authoring and SEO guidelines, roadmap |
 
-## Important Change with index.php
+## Project layout
 
-`index.php` is no longer in the root of the project! It has been moved inside the _public_ folder,
-for better security and separation of components.
+```
+app/Config/Seo.php        Brand, services, FAQ and SEO data
+app/Controllers/          Home, Services, Enquiry, Blog, Sitemap, Admin/BlogController
+app/Models/               Blog, Category, Comment, Enquiry, Tag, User models
+app/Views/                layouts, pages, sections, partials, blog, admin
+app/Database/Migrations/  Blog and enquiry tables
+app/Database/Seeds/       BlogSeeder (categories and starter drafts)
+public/assets/            CSS, JS, fonts, images
+```
 
-This means that you should configure your web server to "point" to your project's _public_ folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter _public/..._, as the rest of your logic and the
-framework are exposed.
+## Common commands
 
-**Please** read the user guide for a better explanation of how CI4 works!
+```bash
+php spark migrate --all
+php spark db:seed BlogSeeder
+php spark routes
+composer test             # or vendor/bin/phpunit
+```
 
-## Repository Management
+## Admin and roles
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+Public registration is disabled. Staff accounts are created by a super admin at `/admin/users`, or from the CLI with `php spark shield:user create ... -g <group>`.
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+| Group | Can do |
+| --- | --- |
+| `superadmin` | Everything, including creating/editing/deleting admin-level accounts |
+| `admin`, `developer` | Use `/admin` (posts, comments, enquiries, users in non-privileged groups) |
+| `user`, `beta` | No admin access; may comment on posts |
 
-## Server Requirements
+Security measures: admin routes require the `admin.access` permission, CSRF is enabled globally, every state change is a POST, post bodies are sanitised with an allow-list on save, and only whitelisted fields are saved. Details in [docs/DEVELOPER.md](docs/DEVELOPER.md#security).
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+## License
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
-
-> [!WARNING]
->
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
-
-Additionally, make sure that the following extensions are enabled in your PHP:
-
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+MIT, see [LICENSE](LICENSE).

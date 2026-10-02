@@ -41,6 +41,7 @@
 | `/admin` | `Admin\Dashboard` | Needs permission `admin.access` |
 | `/admin/blog/*` | `Admin\BlogController` | List/filter, create, edit, status, delete |
 | `/admin/categories`, `/admin/tags` | `CategoryController`, `TagController` | Categories in use cannot be deleted |
+| `/admin/media` | `Admin\MediaController` | Library: browse (scans `public/uploads/blog`), multi-upload, delete unused. `POST /admin/media/upload` is the JSON endpoint for the editor |
 | `/admin/comments` | `Admin\CommentController` | Hide/show/delete |
 | `/admin/enquiries` | `Admin\EnquiryController` | Inbox with new/contacted/closed status |
 | `/admin/users/*` | `Admin\UserController` | Needs `users.edit`; admin-level accounts need `users.manage-admins` |
@@ -64,7 +65,7 @@ Migrations live in `app/Database/Migrations/`.
 | `enquiries` | Contact form submissions with status (`new`/`contacted`/`closed`) |
 | Shield tables | `users`, `auth_identities`, `auth_groups_users`, etc. |
 
-Rollback: `php spark migrate:rollback`. Seed: `php spark db:seed BlogSeeder`.
+`HardenBlogSchema` adds unique slugs for categories and tags, a unique post/tag link, query indexes, and makes `posts.content` MEDIUMTEXT on MySQL (plain TEXT truncates long articles at 64 KB). It repairs existing duplicate slugs and tag links before adding the constraints. Rollback: `php spark migrate:rollback`. Seed: `php spark db:seed BlogSeeder`.
 
 ## Conventions
 
@@ -104,14 +105,26 @@ Implemented:
 - Post bodies pass through `App\Libraries\HtmlSanitizer` (allow-list of tags and attributes, `javascript:` and similar URLs removed, `<h1>` demoted to `<h2>`) before being stored, and are rendered as stored.
 - The sitemap and feed expose published posts only.
 
-Still recommended: rate-limit `/login` and `/enquiry` at the web server, serve over HTTPS with `secureheaders` enabled, and add a Content-Security-Policy that permits the editor CDN (`cdn.jsdelivr.net`) on admin pages only.
+### Abuse protection for public forms
+
+- **Rate limiting:** `App\Filters\Throttle` (alias `throttle`) is a per-IP token bucket. Applied to `POST /enquiry` (5/hour), `POST /blog/comment/{id}` (8/10 min), `POST /login` (10/5 min) and admin image uploads. Over the limit returns HTTP 429 with `Retry-After`. Behind a proxy or CDN set `Config\App::$proxyIPs` so the real client IP is used.
+- **Captcha:** `App\Libraries\Captcha` protects the enquiry and comment forms. Set `turnstile.siteKey` and `turnstile.secretKey` in `.env` to use Cloudflare Turnstile (recommended). Without keys it falls back to a one-time maths question plus a 3 second minimum fill time, tracked in the session.
+- **Honeypot** field on the enquiry form, CSRF everywhere, and `secureheaders` enabled globally.
+- For a real DDoS (volume attacks) put the site behind a CDN/WAF such as Cloudflare; application code cannot absorb that.
+
+Still recommended: serve over HTTPS and add a Content-Security-Policy (the admin editor is self-hosted, so no third-party script source is needed apart from Cloudflare Turnstile if enabled).
+
+### Image uploads
+
+`App\Libraries\ImageUploader` accepts JPG, PNG, WebP or GIF up to 5 MB, verifies the real image type, decodes and re-encodes it with GD (dropping metadata and hidden payloads), scales to 1600px wide and stores it as a randomly named WebP in `public/uploads/blog/YYYY/MM/`. `public/uploads/.htaccess` blocks script execution there. Indexed PNG/GIF files are converted, and phone photos are rotated using their EXIF orientation. The effective size limit is the smaller of 5 MB and PHP's `upload_max_filesize` / `post_max_size` (shown on the post form); raise those in `php.ini` if you need larger files. Pasting or dropping an image into the editor uploads it too. Uploaded files are git-ignored. Back up `public/uploads` with the database.
 
 ## Admin editor
 
-The post form uses Quill 2 from jsdelivr. If the CDN is unreachable, the form falls back to a plain HTML textarea. The sanitiser is the real safety net, not the editor.
+The post form uses Quill 2, self-hosted in `public/assets/quill/` (BSD-3 licence included). If it fails to load, the form falls back to a plain HTML textarea. The editor has an image button (upload), a **Library** button (insert an existing image) and accepts pasted or dropped images. The cover has "Choose from library" as well. The picker reads `GET /admin/media/list` (JSON). The sanitiser is the real safety net, not the editor.
+
+Image files are shared between posts through the library, so changing a post's cover or deleting a post never deletes the file; remove unused files on the Media page.
 
 ## Known gaps / TODO
 
-- No image upload; images are inserted by URL.
 - No post revisions, scheduling or comment replies.
 - Feature tests for the admin controllers (the HTML sanitiser has unit tests in `tests/unit`).

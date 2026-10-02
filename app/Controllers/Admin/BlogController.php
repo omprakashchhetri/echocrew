@@ -166,7 +166,30 @@ class BlogController extends BaseController
 
         $excerpt = trim((string) $this->request->getPost('excerpt'));
 
+        $cover      = $existing['cover_image'] ?? null;
+        $uploader   = new \App\Libraries\ImageUploader();
+        $coverFile  = $this->request->getFile('cover');
+
+        if ($coverFile && $coverFile->getError() !== UPLOAD_ERR_NO_FILE) {
+            try {
+                $saved = $uploader->store($coverFile);
+            } catch (\RuntimeException $e) {
+                $this->validator->setError('cover', $e->getMessage());
+
+                return null;
+            }
+            $cover = $saved['path'];
+        } elseif (\App\Libraries\ImageUploader::isLibraryPath((string) $this->request->getPost('cover_existing'))) {
+            $cover = (string) $this->request->getPost('cover_existing');
+        } elseif ($this->request->getPost('remove_cover')) {
+            $cover = null; // the file stays in the media library until deleted there
+        }
+
+        $coverAlt = trim((string) $this->request->getPost('cover_alt'));
+
         return [
+            'cover_image'  => $cover,
+            'cover_alt'    => $coverAlt !== '' ? mb_substr($coverAlt, 0, 200) : null,
             'title'        => $title,
             'slug'         => $slug,
             'content'      => $content,

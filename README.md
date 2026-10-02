@@ -8,6 +8,8 @@ Marketing website, enquiry intake and blog for [EchoCrew](https://echocrew.in), 
 - Enquiry form with honeypot, validation and DB storage
 - Blog with categories, drafts/published/archived states, view counting and logged-in comments
 - Staff admin at `/admin`: dashboard, posts (search, filter, publish/unpublish), categories, tags, comment moderation, enquiry inbox and user/role management
+- Image uploads (cover and inline), redesigned blog with search, table of contents, related posts and share buttons
+- Bot protection: rate limiting, Cloudflare Turnstile or built-in captcha, honeypot
 - Public blog extras: category and tag pages, excerpts, RSS at `/blog/feed.xml`
 - `sitemap.xml`, canonical URLs, breadcrumbs and JSON-LD schema partials
 

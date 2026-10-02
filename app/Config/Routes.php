@@ -6,13 +6,15 @@ use CodeIgniter\Router\RouteCollection;
  * @var RouteCollection $routes
  */
 $routes->get('/', 'Home::index');
-$routes->post('enquiry', 'Enquiry::store');
+$routes->post('enquiry', 'Enquiry::store', ['filter' => 'throttle:enquiry,5,3600']);
 
 // SEO
 $routes->get('services', 'Services::index');
 $routes->get('services/(:segment)', 'Services::show/$1');
 $routes->get('sitemap.xml', 'Sitemap::index');
 
+// Brute-force guard on the login form; declared before Shield's own routes so it wins.
+$routes->post('login', '\CodeIgniter\Shield\Controllers\LoginController::loginAction', ['filter' => 'throttle:login,10,300']);
 auth()->routes($routes);
 
 // Admin area: staff only (Shield permission `admin.access`). Every state change is POST + CSRF.
@@ -26,6 +28,12 @@ $routes->group('admin', ['filter' => 'permission:admin.access', 'namespace' => '
     $routes->post('blog/update/(:num)', 'BlogController::update/$1');
     $routes->post('blog/status/(:num)', 'BlogController::status/$1');
     $routes->post('blog/delete/(:num)', 'BlogController::delete/$1');
+
+    $routes->get('media', 'MediaController::index');
+    $routes->get('media/list', 'MediaController::list');
+    $routes->post('media/store', 'MediaController::store', ['filter' => 'throttle:upload,60,600']);
+    $routes->post('media/delete', 'MediaController::delete');
+    $routes->post('media/upload', 'MediaController::upload', ['filter' => 'throttle:upload,60,600']);
 
     $routes->get('categories', 'CategoryController::index');
     $routes->post('categories/save', 'CategoryController::save');
@@ -61,4 +69,4 @@ $routes->get('blog/view/(:segment)', 'Blog::view/$1');
 $routes->get('blog/category/(:segment)', 'Blog::category/$1');
 $routes->get('blog/tag/(:segment)', 'Blog::tag/$1');
 $routes->get('blog/feed.xml', 'Blog::feed');
-$routes->post('blog/comment/(:num)', 'Blog::comment/$1');
+$routes->post('blog/comment/(:num)', 'Blog::comment/$1', ['filter' => 'throttle:comment,8,600']);

@@ -8,7 +8,7 @@ class BlogModel extends Model
 {
     protected $table         = 'posts';
     protected $allowedFields = [
-        'title', 'slug', 'excerpt', 'content', 'status', 'published_at',
+        'title', 'slug', 'excerpt', 'content', 'cover_image', 'cover_alt', 'status', 'published_at',
         'user_id', 'category_id', 'view_count',
     ];
     protected $useTimestamps = true;
@@ -17,8 +17,9 @@ class BlogModel extends Model
     // cross-join the table with itself and repeat every row.
     public function withCategory()
     {
-        return $this->select('posts.*, c.name as category_name, c.slug as category_slug')
-                    ->join('categories c', 'c.id = posts.category_id', 'left');
+        return $this->select('posts.*, c.name as category_name, c.slug as category_slug, u.username as author_name')
+                    ->join('categories c', 'c.id = posts.category_id', 'left')
+                    ->join('users u', 'u.id = posts.user_id', 'left');
     }
 
     /** Published posts, newest first. Optional category slug / tag slug filters. */
@@ -61,6 +62,24 @@ class BlogModel extends Model
         }
 
         return $this->orderBy('posts.created_at', 'DESC');
+    }
+
+    /** Other published posts, same category first, newest first. */
+    public function related(array $post, int $limit = 3): array
+    {
+        $same = $this->published()
+            ->where('posts.id !=', $post['id'])
+            ->where('posts.category_id', $post['category_id'])
+            ->findAll($limit);
+
+        if (count($same) >= $limit) {
+            return $same;
+        }
+
+        $ids   = array_merge([(int) $post['id']], array_map('intval', array_column($same, 'id')));
+        $extra = $this->published()->whereNotIn('posts.id', $ids)->findAll($limit - count($same));
+
+        return array_merge($same, $extra);
     }
 
     public function incrementViews($id)
@@ -115,7 +134,7 @@ class BlogModel extends Model
         }
     }
 
-    /** Remove a post together with its tag links and comments. */
+    /** Remove a post together with its tag links and comments. Images stay in the media library. */
     public function deleteWithRelations(int $id): void
     {
         $this->db->table('post_tags')->where('post_id', $id)->delete();

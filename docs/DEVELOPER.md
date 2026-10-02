@@ -65,7 +65,7 @@ Migrations live in `app/Database/Migrations/`.
 | `enquiries` | Contact form submissions with status (`new`/`contacted`/`closed`) |
 | Shield tables | `users`, `auth_identities`, `auth_groups_users`, etc. |
 
-Rollback: `php spark migrate:rollback`. Seed: `php spark db:seed BlogSeeder`.
+`HardenBlogSchema` adds unique slugs for categories and tags, a unique post/tag link, query indexes, and makes `posts.content` MEDIUMTEXT on MySQL (plain TEXT truncates long articles at 64 KB). It repairs existing duplicate slugs and tag links before adding the constraints. Rollback: `php spark migrate:rollback`. Seed: `php spark db:seed BlogSeeder`.
 
 ## Conventions
 
@@ -116,7 +116,7 @@ Still recommended: serve over HTTPS and add a Content-Security-Policy that permi
 
 ### Image uploads
 
-`App\Libraries\ImageUploader` accepts JPG, PNG, WebP or GIF up to 5 MB, verifies the real image type, decodes and re-encodes it with GD (dropping metadata and hidden payloads), scales to 1600px wide and stores it as a randomly named WebP in `public/uploads/blog/YYYY/MM/`. `public/uploads/.htaccess` blocks script execution there. Uploaded files are git-ignored. Back up `public/uploads` with the database.
+`App\Libraries\ImageUploader` accepts JPG, PNG, WebP or GIF up to 5 MB, verifies the real image type, decodes and re-encodes it with GD (dropping metadata and hidden payloads), scales to 1600px wide and stores it as a randomly named WebP in `public/uploads/blog/YYYY/MM/`. `public/uploads/.htaccess` blocks script execution there. Indexed PNG/GIF files are converted, and phone photos are rotated using their EXIF orientation. The effective size limit is the smaller of 5 MB and PHP's `upload_max_filesize` / `post_max_size` (shown on the post form); raise those in `php.ini` if you need larger files. Pasting or dropping an image into the editor uploads it too. Uploaded files are git-ignored. Back up `public/uploads` with the database.
 
 ## Admin editor
 

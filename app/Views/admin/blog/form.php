@@ -48,7 +48,7 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
           <img src="<?= base_url($post['cover_image']) ?>" alt="" style="width:100%;border-radius:8px;margin-bottom:.5rem">
           <label style="font-weight:400"><input type="checkbox" name="remove_cover" value="1"> Remove cover image</label>
         <?php endif; ?>
-        <label for="cover"><?= ! empty($post['cover_image']) ? 'Replace image' : 'Upload image' ?> <span class="mute">(JPG, PNG, WebP or GIF, max 5 MB; 16:9 works best)</span></label>
+        <label for="cover"><?= ! empty($post['cover_image']) ? 'Replace image' : 'Upload image' ?> <span class="mute">(JPG, PNG, WebP or GIF, max <?= esc(\App\Libraries\ImageUploader::limitLabel()) ?>; 16:9 works best)</span></label>
         <input type="file" id="cover" name="cover" accept="image/jpeg,image/png,image/webp,image/gif">
         <label for="cover_alt">Alt text <span class="mute">(describe the image)</span></label>
         <input type="text" id="cover_alt" name="cover_alt" maxlength="200" value="<?= esc($val('cover_alt'), 'attr') ?>">
@@ -80,11 +80,13 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
       var ta = document.createElement('textarea'); ta.name = 'content'; ta.style.minHeight = '320px'; ta.value = document.getElementById('editor').innerHTML;
       document.getElementById('editor').replaceWith(ta); hidden.remove(); return;
     }
+    var MAX_BYTES = <?= \App\Libraries\ImageUploader::limitBytes() ?>;
     var upUrl = <?= json_encode(site_url('admin/media/upload')) ?>, tokenField = form.querySelector('input[name="<?= csrf_token() ?>"]');
     function pickImage() {
       var input = document.createElement('input'); input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp,image/gif';
       input.onchange = function () {
         var f = input.files[0]; if (!f) return;
+        if (f.size > MAX_BYTES) { alert('That image is larger than ' + <?= json_encode(\App\Libraries\ImageUploader::limitLabel()) ?> + '.'); return; }
         var fd = new FormData(); fd.append('image', f); fd.append(tokenField.name, tokenField.value);
         fetch(upUrl, {method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'}, credentials: 'same-origin'})
           .then(function (r) { return r.json(); })
@@ -98,6 +100,27 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
       input.click();
     }
     var q = new Quill('#editor', {theme: 'snow', modules: {toolbar: {container: [[{header: [2, 3, 4, false]}], ['bold', 'italic', 'underline'], [{list: 'ordered'}, {list: 'bullet'}], ['blockquote', 'code-block', 'link', 'image'], ['clean']], handlers: {image: pickImage}}}});
+    var coverInput = document.getElementById('cover');
+    if (coverInput) coverInput.addEventListener('change', function () {
+      if (coverInput.files[0] && coverInput.files[0].size > MAX_BYTES) { alert('That image is larger than ' + <?= json_encode(\App\Libraries\ImageUploader::limitLabel()) ?> + '. Choose a smaller one.'); coverInput.value = ''; }
+    });
+    // Pasted or dropped images: upload them instead of embedding base64 (which the sanitiser would strip).
+    function uploadFile(f) {
+      if (f.size > MAX_BYTES) { alert('That image is larger than ' + <?= json_encode(\App\Libraries\ImageUploader::limitLabel()) ?> + '.'); return; }
+      var fd = new FormData(); fd.append('image', f); fd.append(tokenField.name, tokenField.value);
+      fetch(upUrl, {method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'}, credentials: 'same-origin'})
+        .then(function (r) { return r.json(); })
+        .then(function (j) { if (j.csrf) tokenField.value = j.csrf; if (j.error) { alert(j.error); return; } var range = q.getSelection(true); q.insertEmbed(range.index, 'image', j.url); })
+        .catch(function () { alert('Image upload failed.'); });
+    }
+    q.root.addEventListener('paste', function (e) {
+      var items = (e.clipboardData && e.clipboardData.files) || [];
+      if (items.length && /^image\//.test(items[0].type)) { e.preventDefault(); e.stopPropagation(); uploadFile(items[0]); }
+    }, true);
+    q.root.addEventListener('drop', function (e) {
+      var files = (e.dataTransfer && e.dataTransfer.files) || [];
+      if (files.length && /^image\//.test(files[0].type)) { e.preventDefault(); e.stopPropagation(); uploadFile(files[0]); }
+    }, true);
     form.addEventListener('submit', function () { hidden.value = q.getText().trim() === '' && !q.root.querySelector('img') ? '' : q.root.innerHTML; });
   })();
 </script>

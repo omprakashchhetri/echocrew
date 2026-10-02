@@ -24,11 +24,10 @@ class ImageUploader
      */
     public function store(UploadedFile $file, int $maxWidth = 1600): array
     {
-        if (! $file->isValid() || $file->hasMoved()) {
-            throw new \RuntimeException('The upload failed. Try again.');
-        }
-        if ($file->getSize() > self::MAX_BYTES) {
-            throw new \RuntimeException('Image is larger than 5 MB.');
+        $this->assertUploaded($file);
+
+        if ($file->getSize() > self::limitBytes()) {
+            throw new \RuntimeException('Image is larger than ' . self::limitLabel() . '.');
         }
 
         $info = @getimagesize($file->getTempName());
@@ -45,7 +44,16 @@ class ImageUploader
             throw new \RuntimeException('That image could not be read.');
         }
 
-        if ($info[0] > $maxWidth) {
+        // Palette images (indexed PNG/GIF) cannot be written as WebP.
+        if (! imageistruecolor($img)) {
+            imagepalettetotruecolor($img);
+        }
+
+        if ($info[2] === IMAGETYPE_JPEG) {
+            $img = $this->applyOrientation($img, $file->getTempName());
+        }
+
+        if (imagesx($img) > $maxWidth) {
             $scaled = imagescale($img, $maxWidth, -1, IMG_BICUBIC);
             if ($scaled) {
                 $img = $scaled;
@@ -67,6 +75,76 @@ class ImageUploader
         }
 
         return ['path' => $dir . '/' . $name, 'url' => base_url($dir . '/' . $name)];
+    }
+
+    /** Largest accepted upload in bytes: our cap, further limited by php.ini. */
+    public static function limitBytes(): int
+    {
+        $limits = array_filter([self::MAX_BYTES, self::iniBytes('upload_max_filesize'), self::iniBytes('post_max_size')]);
+
+        return (int) min($limits);
+    }
+
+    public static function limitLabel(): string
+    {
+        $mb = self::limitBytes() / 1048576;
+
+        return (floor($mb) == $mb ? (int) $mb : number_format($mb, 1)) . ' MB';
+    }
+
+    private static function iniBytes(string $key): int
+    {
+        $v = trim((string) ini_get($key));
+        if ($v === '' || $v === '-1') {
+            return 0;
+        }
+        $n = (float) $v;
+
+        return (int) match (strtolower(substr($v, -1))) {
+            'g'     => $n * 1073741824,
+            'm'     => $n * 1048576,
+            'k'     => $n * 1024,
+            default => $n,
+        };
+    }
+
+    private function assertUploaded(UploadedFile $file): void
+    {
+        $err = $file->getError();
+
+        if ($err === UPLOAD_ERR_OK && $file->isValid() && ! $file->hasMoved()) {
+            return;
+        }
+
+        throw new \RuntimeException(match ($err) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Image is larger than the server allows (' . self::limitLabel() . '). Use a smaller image.',
+            UPLOAD_ERR_PARTIAL                        => 'The upload was interrupted. Try again.',
+            UPLOAD_ERR_NO_FILE                        => 'No file was selected.',
+            UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE => 'The server cannot store uploads right now (temp folder problem). Contact the developer.',
+            default                                   => 'The upload failed. Try again.',
+        });
+    }
+
+    /** Rotate JPEGs according to their EXIF orientation (phone photos). */
+    private function applyOrientation(\GdImage $img, string $path): \GdImage
+    {
+        if (! function_exists('exif_read_data')) {
+            return $img;
+        }
+
+        $exif = @exif_read_data($path);
+        $deg  = match ((int) ($exif['Orientation'] ?? 1)) {
+            3 => 180,
+            6 => -90,
+            8 => 90,
+            default => 0,
+        };
+
+        if ($deg !== 0 && ($rotated = imagerotate($img, $deg, 0))) {
+            return $rotated;
+        }
+
+        return $img;
     }
 
     /** Delete a previously stored file. Only paths under uploads/blog/ are ever touched. */

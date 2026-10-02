@@ -1,5 +1,9 @@
 # Blog Guide
 
+## Design
+
+Styles live in `public/assets/css/blog.css` (prefix `eb-`), behaviour in `public/assets/js/blog.js`. The index has a featured latest post, category chips, search and a card grid; posts have a reading-progress bar, sticky share buttons, an auto-generated table of contents from `<h2>` headings, author box, call to action, related posts and BlogPosting structured data.
+
 ## How it works
 
 - Public list: `/blog` (published posts, 10 per page, newest first), plus `/blog/category/{slug}` and `/blog/tag/{slug}`.
@@ -16,7 +20,8 @@
 4. Keep status `draft` until reviewed; `published` sets the publish date the first time.
 5. **Slugs** are generated from the title once. Editing the title later does not change the URL; change the slug field deliberately if you must.
 6. **Categories** and **Tags** have their own pages. A category with posts cannot be deleted.
-7. Bodies are sanitised on save: headings, paragraphs, lists, links, images, quotes, code and tables only.
+7. **Images:** upload a cover (shown on cards, the post hero and social previews; 16:9 or wider works best, add alt text) and use the image button in the editor for inline pictures. Posts without a cover get a generated colour placeholder.
+8. Bodies are sanitised on save: headings, paragraphs, lists, links, images, quotes, code and tables only.
 
 Seed starter categories and draft posts:
 
@@ -50,7 +55,6 @@ The seeder creates these as drafts with an outline for each, ready to be written
 
 ## Roadmap
 
-1. Image upload and a cover image field.
-2. Scheduled publishing and post revisions.
-3. Comment replies and spam protection.
-4. Feature tests for the admin controllers.
+1. Scheduled publishing and post revisions.
+2. Comment replies and spam protection.
+3. Feature tests for the admin controllers.

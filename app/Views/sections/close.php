@@ -174,6 +174,8 @@ $ecSeo = config('Seo');
         <?= $err('message') ?>
       </div>
 
+      <?= (new \App\Libraries\Captcha())->render('enquiry') ?>
+
       <div class="ec-form__foot">
         <button class="ec-btn ec-btn--primary" type="submit">Send enquiry</button>
         <span class="ec-help">We read every enquiry and reply on the contact method you choose.</span>

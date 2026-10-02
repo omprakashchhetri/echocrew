@@ -13,6 +13,12 @@ class Enquiry extends BaseController
             return redirect()->to(base_url() . '#contact');
         }
 
+        if (($captchaError = (new \App\Libraries\Captcha())->verify($this->request, 'enquiry')) !== null) {
+            return redirect()->to(base_url() . '#contact')
+                ->withInput()
+                ->with('ec_error', $captchaError);
+        }
+
         // Optional limits mirror the column sizes in CreateEnquiries.
         $rules = [
             'name'              => ['label' => 'Name',    'rules' => 'required|min_length[2]|max_length[120]'],

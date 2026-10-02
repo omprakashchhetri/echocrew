@@ -48,6 +48,7 @@ $assetVer    = $assetVersion ?? '2';
     <link rel="stylesheet" href="<?= base_url('assets/css/echocrew.css') ?>?v=<?= esc($assetVer, 'attr') ?>">
 
     <?= $this->include('partials/schema') ?>
+    <?= $this->renderSection('head') ?>
 </head>
 
 <body class="<?= esc($bodyClass ?? '', 'attr') ?>">
@@ -64,6 +65,7 @@ $assetVer    = $assetVersion ?? '2';
 
     <script src="<?= base_url('assets/js/plugin.js') ?>" defer></script>
     <script src="<?= base_url('assets/js/echocrew.js') ?>?v=<?= esc($assetVer, 'attr') ?>" defer></script>
+    <?= $this->renderSection('scripts') ?>
 </body>
 
 </html>

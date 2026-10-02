@@ -5,7 +5,7 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
 ?>
 <?= $this->extend('admin/layout') ?>
 <?= $this->section('content') ?>
-<form method="post" action="<?= site_url($editing ? 'admin/blog/update/' . $post['id'] : 'admin/blog/store') ?>" id="post-form">
+<form method="post" action="<?= site_url($editing ? 'admin/blog/update/' . $post['id'] : 'admin/blog/store') ?>" id="post-form" enctype="multipart/form-data">
   <?= csrf_field() ?>
   <div class="two">
     <div class="card">
@@ -43,6 +43,18 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
       </div>
 
       <div class="card">
+        <h2>Cover image</h2>
+        <?php if (! empty($post['cover_image'])): ?>
+          <img src="<?= base_url($post['cover_image']) ?>" alt="" style="width:100%;border-radius:8px;margin-bottom:.5rem">
+          <label style="font-weight:400"><input type="checkbox" name="remove_cover" value="1"> Remove cover image</label>
+        <?php endif; ?>
+        <label for="cover"><?= ! empty($post['cover_image']) ? 'Replace image' : 'Upload image' ?> <span class="mute">(JPG, PNG, WebP or GIF, max 5 MB; 16:9 works best)</span></label>
+        <input type="file" id="cover" name="cover" accept="image/jpeg,image/png,image/webp,image/gif">
+        <label for="cover_alt">Alt text <span class="mute">(describe the image)</span></label>
+        <input type="text" id="cover_alt" name="cover_alt" maxlength="200" value="<?= esc($val('cover_alt'), 'attr') ?>">
+      </div>
+
+      <div class="card">
         <h2>Tags</h2>
         <?php foreach ($allTags as $t): ?>
           <label style="font-weight:400;margin:.2rem 0"><input type="checkbox" name="tags[]" value="<?= $t['id'] ?>" <?= in_array((int) $t['id'], $checked, true) ? 'checked' : '' ?>> <?= esc($t['name']) ?></label>
@@ -68,7 +80,24 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
       var ta = document.createElement('textarea'); ta.name = 'content'; ta.style.minHeight = '320px'; ta.value = document.getElementById('editor').innerHTML;
       document.getElementById('editor').replaceWith(ta); hidden.remove(); return;
     }
-    var q = new Quill('#editor', {theme: 'snow', modules: {toolbar: [[{header: [2, 3, 4, false]}], ['bold', 'italic', 'underline'], [{list: 'ordered'}, {list: 'bullet'}], ['blockquote', 'code-block', 'link', 'image'], ['clean']]}});
+    var upUrl = <?= json_encode(site_url('admin/media/upload')) ?>, tokenField = form.querySelector('input[name="<?= csrf_token() ?>"]');
+    function pickImage() {
+      var input = document.createElement('input'); input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp,image/gif';
+      input.onchange = function () {
+        var f = input.files[0]; if (!f) return;
+        var fd = new FormData(); fd.append('image', f); fd.append(tokenField.name, tokenField.value);
+        fetch(upUrl, {method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'}, credentials: 'same-origin'})
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j.csrf) tokenField.value = j.csrf;
+            if (j.error) { alert(j.error); return; }
+            var range = q.getSelection(true); q.insertEmbed(range.index, 'image', j.url); q.setSelection(range.index + 1);
+          })
+          .catch(function () { alert('Image upload failed.'); });
+      };
+      input.click();
+    }
+    var q = new Quill('#editor', {theme: 'snow', modules: {toolbar: {container: [[{header: [2, 3, 4, false]}], ['bold', 'italic', 'underline'], [{list: 'ordered'}, {list: 'bullet'}], ['blockquote', 'code-block', 'link', 'image'], ['clean']], handlers: {image: pickImage}}}});
     form.addEventListener('submit', function () { hidden.value = q.getText().trim() === '' && !q.root.querySelector('img') ? '' : q.root.innerHTML; });
   })();
 </script>

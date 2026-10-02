@@ -41,6 +41,7 @@
 | `/admin` | `Admin\Dashboard` | Needs permission `admin.access` |
 | `/admin/blog/*` | `Admin\BlogController` | List/filter, create, edit, status, delete |
 | `/admin/categories`, `/admin/tags` | `CategoryController`, `TagController` | Categories in use cannot be deleted |
+| `POST /admin/media/upload` | `Admin\MediaController` | Inline editor image upload, JSON response |
 | `/admin/comments` | `Admin\CommentController` | Hide/show/delete |
 | `/admin/enquiries` | `Admin\EnquiryController` | Inbox with new/contacted/closed status |
 | `/admin/users/*` | `Admin\UserController` | Needs `users.edit`; admin-level accounts need `users.manage-admins` |
@@ -104,7 +105,18 @@ Implemented:
 - Post bodies pass through `App\Libraries\HtmlSanitizer` (allow-list of tags and attributes, `javascript:` and similar URLs removed, `<h1>` demoted to `<h2>`) before being stored, and are rendered as stored.
 - The sitemap and feed expose published posts only.
 
-Still recommended: rate-limit `/login` and `/enquiry` at the web server, serve over HTTPS with `secureheaders` enabled, and add a Content-Security-Policy that permits the editor CDN (`cdn.jsdelivr.net`) on admin pages only.
+### Abuse protection for public forms
+
+- **Rate limiting:** `App\Filters\Throttle` (alias `throttle`) is a per-IP token bucket. Applied to `POST /enquiry` (5/hour), `POST /blog/comment/{id}` (8/10 min), `POST /login` (10/5 min) and admin image uploads. Over the limit returns HTTP 429 with `Retry-After`. Behind a proxy or CDN set `Config\App::$proxyIPs` so the real client IP is used.
+- **Captcha:** `App\Libraries\Captcha` protects the enquiry and comment forms. Set `turnstile.siteKey` and `turnstile.secretKey` in `.env` to use Cloudflare Turnstile (recommended). Without keys it falls back to a one-time maths question plus a 3 second minimum fill time, tracked in the session.
+- **Honeypot** field on the enquiry form, CSRF everywhere, and `secureheaders` enabled globally.
+- For a real DDoS (volume attacks) put the site behind a CDN/WAF such as Cloudflare; application code cannot absorb that.
+
+Still recommended: serve over HTTPS and add a Content-Security-Policy that permits the editor CDN (`cdn.jsdelivr.net`) on admin pages only.
+
+### Image uploads
+
+`App\Libraries\ImageUploader` accepts JPG, PNG, WebP or GIF up to 5 MB, verifies the real image type, decodes and re-encodes it with GD (dropping metadata and hidden payloads), scales to 1600px wide and stores it as a randomly named WebP in `public/uploads/blog/YYYY/MM/`. `public/uploads/.htaccess` blocks script execution there. Uploaded files are git-ignored. Back up `public/uploads` with the database.
 
 ## Admin editor
 
@@ -112,6 +124,6 @@ The post form uses Quill 2 from jsdelivr. If the CDN is unreachable, the form fa
 
 ## Known gaps / TODO
 
-- No image upload; images are inserted by URL.
+- No media library page (images are uploaded per post or inline in the editor).
 - No post revisions, scheduling or comment replies.
 - Feature tests for the admin controllers (the HTML sanitiser has unit tests in `tests/unit`).

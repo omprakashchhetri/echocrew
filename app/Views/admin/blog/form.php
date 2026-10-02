@@ -129,8 +129,8 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
   })();
 </script>
 
-<link href="<?= base_url("assets/vendor/quill/quill.snow.css") ?>" rel="stylesheet">
-<script src="<?= base_url("assets/vendor/quill/quill.js") ?>"></script>
+<link href="<?= base_url("assets/quill/quill.snow.css") ?>" rel="stylesheet">
+<script src="<?= base_url("assets/quill/quill.js") ?>"></script>
 <script>
   (function () {
     var form = document.getElementById('post-form'), hidden = document.getElementById('content');

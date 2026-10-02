@@ -120,7 +120,7 @@ Still recommended: serve over HTTPS and add a Content-Security-Policy (the admin
 
 ## Admin editor
 
-The post form uses Quill 2, self-hosted in `public/assets/vendor/quill/` (BSD-3 licence included). If it fails to load, the form falls back to a plain HTML textarea. The editor has an image button (upload), a **Library** button (insert an existing image) and accepts pasted or dropped images. The cover has "Choose from library" as well. The picker reads `GET /admin/media/list` (JSON). The sanitiser is the real safety net, not the editor.
+The post form uses Quill 2, self-hosted in `public/assets/quill/` (BSD-3 licence included). If it fails to load, the form falls back to a plain HTML textarea. The editor has an image button (upload), a **Library** button (insert an existing image) and accepts pasted or dropped images. The cover has "Choose from library" as well. The picker reads `GET /admin/media/list` (JSON). The sanitiser is the real safety net, not the editor.
 
 Image files are shared between posts through the library, so changing a post's cover or deleting a post never deletes the file; remove unused files on the Media page.
 

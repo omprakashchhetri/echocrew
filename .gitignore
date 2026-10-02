@@ -126,3 +126,8 @@ _modules/*
 
 /results/
 /phpunit*.xml
+
+# User uploads (keep the folder and its .htaccess)
+public/uploads/*
+!public/uploads/.htaccess
+!public/uploads/.gitkeep

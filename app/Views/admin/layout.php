@@ -6,6 +6,7 @@ $nav     = [
     ['admin/blog',       'Posts',      true],
     ['admin/categories', 'Categories', true],
     ['admin/tags',       'Tags',       true],
+    ['admin/media',      'Media',      true],
     ['admin/comments',   'Comments',   true],
     ['admin/enquiries',  'Enquiries',  true],
     ['admin/users',      'Users',      $user->can('users.edit')],
@@ -36,7 +37,7 @@ a{color:var(--accent)}label{display:block;font-weight:600;margin:.8rem 0 .25rem}
 input[type=text],input[type=email],input[type=password],input[type=search],select,textarea{width:100%;padding:.55rem .65rem;border:1px solid var(--line);border-radius:7px;font:inherit;background:#fff}
 textarea{min-height:90px}
 .btn{display:inline-block;background:var(--accent);color:#fff;border:0;border-radius:7px;padding:.5rem .95rem;font:inherit;cursor:pointer;text-decoration:none}
-.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn.bad{background:var(--bad)}.btn.sm{padding:.25rem .6rem;font-size:.85rem}
+.btn[disabled]{opacity:.45;cursor:not-allowed}.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn.bad{background:var(--bad)}.btn.sm{padding:.25rem .6rem;font-size:.85rem}
 form.inline{display:inline}.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
 .pill{display:inline-block;padding:.05rem .55rem;border-radius:99px;font-size:.78rem;background:#eceef2}
 .pill.published,.pill.approved,.pill.closed{background:#d1fadf;color:var(--ok)}.pill.draft,.pill.new{background:#fef0c7;color:#93370d}.pill.archived,.pill.hidden{background:#eee;color:#555}.pill.contacted{background:#dbe6ff;color:#1b3fa0}

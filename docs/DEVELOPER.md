@@ -41,7 +41,7 @@
 | `/admin` | `Admin\Dashboard` | Needs permission `admin.access` |
 | `/admin/blog/*` | `Admin\BlogController` | List/filter, create, edit, status, delete |
 | `/admin/categories`, `/admin/tags` | `CategoryController`, `TagController` | Categories in use cannot be deleted |
-| `POST /admin/media/upload` | `Admin\MediaController` | Inline editor image upload, JSON response |
+| `/admin/media` | `Admin\MediaController` | Library: browse (scans `public/uploads/blog`), multi-upload, delete unused. `POST /admin/media/upload` is the JSON endpoint for the editor |
 | `/admin/comments` | `Admin\CommentController` | Hide/show/delete |
 | `/admin/enquiries` | `Admin\EnquiryController` | Inbox with new/contacted/closed status |
 | `/admin/users/*` | `Admin\UserController` | Needs `users.edit`; admin-level accounts need `users.manage-admins` |
@@ -124,6 +124,5 @@ The post form uses Quill 2 from jsdelivr. If the CDN is unreachable, the form fa
 
 ## Known gaps / TODO
 
-- No media library page (images are uploaded per post or inline in the editor).
 - No post revisions, scheduling or comment replies.
 - Feature tests for the admin controllers (the HTML sanitiser has unit tests in `tests/unit`).

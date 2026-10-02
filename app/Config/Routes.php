@@ -29,6 +29,9 @@ $routes->group('admin', ['filter' => 'permission:admin.access', 'namespace' => '
     $routes->post('blog/status/(:num)', 'BlogController::status/$1');
     $routes->post('blog/delete/(:num)', 'BlogController::delete/$1');
 
+    $routes->get('media', 'MediaController::index');
+    $routes->post('media/store', 'MediaController::store', ['filter' => 'throttle:upload,60,600']);
+    $routes->post('media/delete', 'MediaController::delete');
     $routes->post('media/upload', 'MediaController::upload', ['filter' => 'throttle:upload,60,600']);
 
     $routes->get('categories', 'CategoryController::index');

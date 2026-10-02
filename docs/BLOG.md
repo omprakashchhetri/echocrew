@@ -20,8 +20,8 @@ Styles live in `public/assets/css/blog.css` (prefix `eb-`), behaviour in `public
 4. Keep status `draft` until reviewed; `published` sets the publish date the first time.
 5. **Slugs** are generated from the title once. Editing the title later does not change the URL; change the slug field deliberately if you must.
 6. **Categories** and **Tags** have their own pages. A category with posts cannot be deleted.
-7. **Images:** upload a cover (shown on cards, the post hero and social previews; 16:9 or wider works best, add alt text) and use the image button in the editor for inline pictures. Posts without a cover get a generated colour placeholder.
-8. **Media library** (`/admin/media`): upload several images at once, see size and where each is used, copy its URL, and delete unused ones (images used by a post cannot be deleted).
+7. **Images:** upload a cover (shown on cards, the post hero and social previews; 16:9 or wider works best, add alt text) and use the editor's image button (upload) or **Library** button (insert an existing image) for inline pictures. The cover can also be picked with "Choose from library". Posts without a cover get a generated colour placeholder.
+8. **Media library** (`/admin/media`): upload several images at once, see size and where each is used, copy its URL, and delete unused ones (images used by a post cannot be deleted). Removing a cover or deleting a post leaves the file in the library.
 9. Bodies are sanitised on save: headings, paragraphs, lists, links, images, quotes, code and tables only.
 
 Seed starter categories and draft posts:

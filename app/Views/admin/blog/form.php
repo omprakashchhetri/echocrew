@@ -50,6 +50,9 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
         <?php endif; ?>
         <label for="cover"><?= ! empty($post['cover_image']) ? 'Replace image' : 'Upload image' ?> <span class="mute">(JPG, PNG, WebP or GIF, max <?= esc(\App\Libraries\ImageUploader::limitLabel()) ?>; 16:9 works best)</span></label>
         <input type="file" id="cover" name="cover" accept="image/jpeg,image/png,image/webp,image/gif">
+        <p style="margin:.5rem 0 0"><button class="btn ghost sm" type="button" id="cover-library">Choose from library</button></p>
+        <input type="hidden" name="cover_existing" id="cover_existing" value="">
+        <div id="cover-picked" class="mute" style="margin-top:.5rem;display:none"></div>
         <label for="cover_alt">Alt text <span class="mute">(describe the image)</span></label>
         <input type="text" id="cover_alt" name="cover_alt" maxlength="200" value="<?= esc($val('cover_alt'), 'attr') ?>">
       </div>
@@ -71,8 +74,63 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
   </div>
 </form>
 
-<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<div id="lib-modal" hidden style="position:fixed;inset:0;z-index:100;background:rgba(10,12,16,.6);display:none;align-items:center;justify-content:center;padding:1rem">
+  <div class="card" style="width:min(900px,100%);max-height:88vh;overflow:auto;margin:0" role="dialog" aria-modal="true" aria-label="Media library">
+    <div class="row" style="justify-content:space-between;margin-bottom:.8rem">
+      <h2 style="margin:0">Media library</h2>
+      <button type="button" class="btn ghost sm" id="lib-close">Close</button>
+    </div>
+    <div id="lib-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.6rem"></div>
+    <p id="lib-empty" class="mute" style="display:none">No images yet. Upload one from the Media page or the editor.</p>
+    <p style="text-align:center;margin:1rem 0 0"><button type="button" class="btn ghost sm" id="lib-more" style="display:none">Load more</button></p>
+  </div>
+</div>
+<script>
+  // Media library picker: window.ecPickMedia(function (item) { ... }) where item = {url, path, w, h}
+  (function () {
+    var modal = document.getElementById('lib-modal'), grid = document.getElementById('lib-grid'),
+        more = document.getElementById('lib-more'), empty = document.getElementById('lib-empty'),
+        listUrl = <?= json_encode(site_url('admin/media/list')) ?>, page = 0, pages = 1, onPick = null;
+
+    function close() { modal.style.display = 'none'; onPick = null; }
+    function load() {
+      fetch(listUrl + '?page=' + (page + 1), {credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) {
+        page = j.page; pages = j.pages;
+        j.items.forEach(function (it) {
+          var b = document.createElement('button'); b.type = 'button';
+          b.style.cssText = 'padding:0;border:1px solid #e4e4de;border-radius:8px;overflow:hidden;background:#fff;cursor:pointer';
+          b.title = it.w + '\u00d7' + it.h;
+          var im = document.createElement('img'); im.src = it.url; im.alt = ''; im.loading = 'lazy'; im.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;display:block';
+          b.appendChild(im);
+          b.addEventListener('click', function () { var cb = onPick; close(); if (cb) cb(it); });
+          grid.appendChild(b);
+        });
+        empty.style.display = grid.children.length ? 'none' : 'block';
+        more.style.display = page < pages ? 'inline-block' : 'none';
+      }).catch(function () { alert('Could not load the media library.'); });
+    }
+    window.ecPickMedia = function (cb) {
+      onPick = cb; grid.innerHTML = ''; page = 0; modal.style.display = 'flex'; load();
+    };
+    more.addEventListener('click', load);
+    document.getElementById('lib-close').addEventListener('click', close);
+    modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
+
+    var coverBtn = document.getElementById('cover-library'), existing = document.getElementById('cover_existing'), picked = document.getElementById('cover-picked');
+    if (coverBtn) coverBtn.addEventListener('click', function () {
+      window.ecPickMedia(function (it) {
+        existing.value = it.path;
+        picked.style.display = 'block';
+        picked.innerHTML = '<img src="' + it.url + '" alt="" style="width:100%;border-radius:8px;display:block;margin-bottom:.3rem">Selected from library. Save the post to apply. <a href="#" id="cover-unpick">Undo</a>';
+        document.getElementById('cover-unpick').addEventListener('click', function (e) { e.preventDefault(); existing.value = ''; picked.style.display = 'none'; });
+      });
+    });
+  })();
+</script>
+
+<link href="<?= base_url("assets/vendor/quill/quill.snow.css") ?>" rel="stylesheet">
+<script src="<?= base_url("assets/vendor/quill/quill.js") ?>"></script>
 <script>
   (function () {
     var form = document.getElementById('post-form'), hidden = document.getElementById('content');
@@ -100,6 +158,15 @@ $checked = array_map('intval', (array) old('tags', $postTagIds));
       input.click();
     }
     var q = new Quill('#editor', {theme: 'snow', modules: {toolbar: {container: [[{header: [2, 3, 4, false]}], ['bold', 'italic', 'underline'], [{list: 'ordered'}, {list: 'bullet'}], ['blockquote', 'code-block', 'link', 'image'], ['clean']], handlers: {image: pickImage}}}});
+    var tb = q.getModule('toolbar').container, grp = document.createElement('span');
+    grp.className = 'ql-formats';
+    grp.innerHTML = '<button type="button" id="ql-library" style="width:auto;padding:0 8px;font-size:13px" title="Insert image from library">Library</button>';
+    tb.appendChild(grp);
+    document.getElementById('ql-library').addEventListener('click', function () {
+      var range = q.getSelection(true);
+      window.ecPickMedia(function (it) { q.insertEmbed(range.index, 'image', it.url); q.setSelection(range.index + 1); });
+    });
+
     var coverInput = document.getElementById('cover');
     if (coverInput) coverInput.addEventListener('change', function () {
       if (coverInput.files[0] && coverInput.files[0].size > MAX_BYTES) { alert('That image is larger than ' + <?= json_encode(\App\Libraries\ImageUploader::limitLabel()) ?> + '. Choose a smaller one.'); coverInput.value = ''; }

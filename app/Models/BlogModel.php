@@ -134,12 +134,9 @@ class BlogModel extends Model
         }
     }
 
-    /** Remove a post together with its tag links and comments. */
+    /** Remove a post together with its tag links and comments. Images stay in the media library. */
     public function deleteWithRelations(int $id): void
     {
-        $post = $this->find($id);
-        (new \App\Libraries\ImageUploader())->remove($post['cover_image'] ?? null);
-
         $this->db->table('post_tags')->where('post_id', $id)->delete();
         $this->db->table('comments')->where('post_id', $id)->delete();
         $this->delete($id);

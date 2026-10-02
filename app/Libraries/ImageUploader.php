@@ -147,6 +147,12 @@ class ImageUploader
         return $img;
     }
 
+    /** True when $path is an existing file inside the managed upload folder. */
+    public static function isLibraryPath(string $path): bool
+    {
+        return (bool) preg_match('#^uploads/blog/\d{4}/\d{2}/[a-f0-9]+\.webp$#', $path) && is_file(FCPATH . $path);
+    }
+
     /** Delete a previously stored file. Only paths under uploads/blog/ are ever touched. */
     public function remove(?string $path): void
     {

@@ -12,7 +12,29 @@ class MediaController extends BaseController
 
     public function index()
     {
-        $all   = glob(FCPATH . 'uploads/blog/*/*/*.webp') ?: [];
+        [$items, $total, $page, $pages] = $this->page(true);
+
+        return view('admin/media', [
+            'pageTitle' => 'Media',
+            'items'     => $items,
+            'total'     => $total,
+            'page'      => $page,
+            'pages'     => $pages,
+        ]);
+    }
+
+    /** JSON feed for the "insert from library" picker in the post editor. */
+    public function list()
+    {
+        [$items, $total, $page, $pages] = $this->page(false);
+
+        return $this->response->setJSON(['items' => $items, 'total' => $total, 'page' => $page, 'pages' => $pages]);
+    }
+
+    /** @return array{0:list<array<string,mixed>>,1:int,2:int,3:int} */
+    private function page(bool $withUsage): array
+    {
+        $all = glob(FCPATH . 'uploads/blog/*/*/*.webp') ?: [];
         usort($all, static fn ($a, $b) => filemtime($b) <=> filemtime($a));
 
         $total = count($all);
@@ -20,7 +42,7 @@ class MediaController extends BaseController
         $page  = min($pages, max(1, (int) $this->request->getGet('page')));
         $slice = array_slice($all, ($page - 1) * self::PER_PAGE, self::PER_PAGE);
 
-        $posts = (new \App\Models\BlogModel())->select('id, title, cover_image, content')->findAll();
+        $posts = $withUsage ? (new \App\Models\BlogModel())->select('id, title, cover_image, content')->findAll() : [];
 
         $items = [];
         foreach ($slice as $abs) {
@@ -33,23 +55,17 @@ class MediaController extends BaseController
                 }
             }
             $items[] = [
-                'path'  => $rel,
-                'url'   => base_url($rel),
-                'size'  => filesize($abs),
-                'w'     => $dims[0],
-                'h'     => $dims[1],
-                'time'  => filemtime($abs),
-                'used'  => $used,
+                'path' => $rel,
+                'url'  => base_url($rel),
+                'size' => filesize($abs),
+                'w'    => $dims[0],
+                'h'    => $dims[1],
+                'time' => filemtime($abs),
+                'used' => $used,
             ];
         }
 
-        return view('admin/media', [
-            'pageTitle' => 'Media',
-            'items'     => $items,
-            'total'     => $total,
-            'page'      => $page,
-            'pages'     => $pages,
-        ]);
+        return [$items, $total, $page, $pages];
     }
 
     /** Library upload form: one or more images. */

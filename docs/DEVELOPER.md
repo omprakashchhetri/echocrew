@@ -112,7 +112,7 @@ Implemented:
 - **Honeypot** field on the enquiry form, CSRF everywhere, and `secureheaders` enabled globally.
 - For a real DDoS (volume attacks) put the site behind a CDN/WAF such as Cloudflare; application code cannot absorb that.
 
-Still recommended: serve over HTTPS and add a Content-Security-Policy that permits the editor CDN (`cdn.jsdelivr.net`) on admin pages only.
+Still recommended: serve over HTTPS and add a Content-Security-Policy (the admin editor is self-hosted, so no third-party script source is needed apart from Cloudflare Turnstile if enabled).
 
 ### Image uploads
 
@@ -120,7 +120,9 @@ Still recommended: serve over HTTPS and add a Content-Security-Policy that permi
 
 ## Admin editor
 
-The post form uses Quill 2 from jsdelivr. If the CDN is unreachable, the form falls back to a plain HTML textarea. The sanitiser is the real safety net, not the editor.
+The post form uses Quill 2, self-hosted in `public/assets/vendor/quill/` (BSD-3 licence included). If it fails to load, the form falls back to a plain HTML textarea. The editor has an image button (upload), a **Library** button (insert an existing image) and accepts pasted or dropped images. The cover has "Choose from library" as well. The picker reads `GET /admin/media/list` (JSON). The sanitiser is the real safety net, not the editor.
+
+Image files are shared between posts through the library, so changing a post's cover or deleting a post never deletes the file; remove unused files on the Media page.
 
 ## Known gaps / TODO
 

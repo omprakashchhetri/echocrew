@@ -178,11 +178,11 @@ class BlogController extends BaseController
 
                 return null;
             }
-            $uploader->remove($cover);
             $cover = $saved['path'];
+        } elseif (\App\Libraries\ImageUploader::isLibraryPath((string) $this->request->getPost('cover_existing'))) {
+            $cover = (string) $this->request->getPost('cover_existing');
         } elseif ($this->request->getPost('remove_cover')) {
-            $uploader->remove($cover);
-            $cover = null;
+            $cover = null; // the file stays in the media library until deleted there
         }
 
         $coverAlt = trim((string) $this->request->getPost('cover_alt'));
